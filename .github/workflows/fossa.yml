@@ -1,0 +1,47 @@
+name: FOSSA License Scan
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  fossa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: 'maven' # automatic ~/.m2/repository caching
+
+      - name: Restore Maven dependencies (go offline)
+        run: |
+          # This downloads dependencies so FOSSA can analyze the full dependency graph.
+          mvn -B -DskipTests dependency:go-offline
+
+      - name: Build project (skip tests) to ensure full dependency graph
+        run: |
+          mvn -B -DskipTests package
+
+      - name: Install FOSSA CLI
+        run: |
+          curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash
+
+      - name: Authenticate FOSSA CLI
+        env:
+          FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
+        run: |
+          fossa auth login --api-key "$FOSSA_API_KEY"
+
+      - name: Run FOSSA analysis and upload
+        run: |
+          fossa analyze --upload
+
+      - name: Verify License Compliance
+        run: |
+          fossa test
