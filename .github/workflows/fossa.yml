@@ -44,9 +44,12 @@ jobs:
         run: |
           curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash
 
-      - name: Run FOSSA analysis and upload
-        run: |
-          fossa analyze --upload
+      - name: Analyze dependencies
+        run: fossa analyze
+
+      - name: Upload results to FOSSA
+        run: fossa upload
+
 
       - name: Verify License Compliance
         run: |
