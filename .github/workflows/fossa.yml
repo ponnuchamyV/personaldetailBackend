@@ -4,10 +4,14 @@ on:
   push:
     branches: [ main, master, sam ]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   fossa:
     runs-on: ubuntu-latest
+    env:
+      FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}   # provide API key via env (do NOT hardcode)
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -15,31 +19,40 @@ jobs:
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: 'temurin'
           java-version: '21'
-          cache: 'maven' # automatic ~/.m2/repository caching
+          cache: 'maven'
 
-      - name: Restore Maven dependencies (go offline)
-        run: |
-          # This downloads dependencies so FOSSA can analyze the full dependency graph.
-          mvn -B -DskipTests dependency:go-offline
+      - name: Cache Maven repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
-      - name: Build project (skip tests) to ensure full dependency graph
-        run: |
-          mvn -B -DskipTests package
+      - name: Download dependencies (go-offline)
+        run: mvn -B -DskipTests dependency:go-offline
+
+      - name: Build project (skip tests)
+        run: mvn -B -DskipTests package
 
       - name: Install FOSSA CLI
         run: |
           curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash
 
-      - name: Authenticate FOSSA CLI
-        env:
-          FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
+      - name: Debug: confirm FOSSA_API_KEY is present
         run: |
-          fossa auth login --api-key "$FOSSA_API_KEY"
+          if [ -z "${FOSSA_API_KEY:-}" ]; then
+            echo "FOSSA_API_KEY is NOT SET"
+            exit 1
+          else
+            echo "FOSSA_API_KEY is present (length: $(echo -n "$FOSSA_API_KEY" | wc -c) bytes)"
+          fi
 
       - name: Run FOSSA analysis and upload
         run: |
+          # CLI will use FOSSA_API_KEY env variable automatically
           fossa analyze --upload
 
       - name: Verify License Compliance
