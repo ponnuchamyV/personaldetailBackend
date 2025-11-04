@@ -2,15 +2,18 @@ name: FOSSA License Scan
 
 on:
   push:
-    branches: [ main, master, sam ]
-  pull_request:
-  workflow_dispatch:
+    branches:
+      - main
+      - master
+      - sam
+  pull_request: {}
+  workflow_dispatch: {}
 
 jobs:
   fossa:
     runs-on: ubuntu-latest
     env:
-      FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}   # provide API key via env (do NOT hardcode)
+      FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
 
     steps:
       - name: Checkout code
@@ -19,9 +22,9 @@ jobs:
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '21'
-          cache: 'maven'
+          cache: maven
 
       - name: Cache Maven repository
         uses: actions/cache@v4
@@ -41,18 +44,8 @@ jobs:
         run: |
           curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash
 
-      - name: Debug: confirm FOSSA_API_KEY is present
-        run: |
-          if [ -z "${FOSSA_API_KEY:-}" ]; then
-            echo "FOSSA_API_KEY is NOT SET"
-            exit 1
-          else
-            echo "FOSSA_API_KEY is present (length: $(echo -n "$FOSSA_API_KEY" | wc -c) bytes)"
-          fi
-
       - name: Run FOSSA analysis and upload
         run: |
-          # CLI will use FOSSA_API_KEY env variable automatically
           fossa analyze --upload
 
       - name: Verify License Compliance
