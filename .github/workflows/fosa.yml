@@ -1,0 +1,38 @@
+name: FOSSA License Scan
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  fossa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Optional: install dependencies (uncomment if needed for your language)
+      # - name: Install dependencies
+      #   run: |
+      #     npm ci
+      #     # or: pip install -r requirements.txt
+      #     # or: mvn install -DskipTests
+
+      - name: Install FOSSA CLI
+        run: |
+          curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash
+
+      - name: Authenticate FOSSA CLI
+        env:
+          FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
+        run: |
+          fossa auth login --api-key "$FOSSA_API_KEY"
+
+      - name: Run FOSSA Analysis
+        run: |
+          fossa analyze --upload
+
+      - name: Verify License Compliance
+        run: |
+          fossa test
