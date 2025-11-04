@@ -2,7 +2,7 @@ name: FOSSA License Scan
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, sam ]
   pull_request:
 
 jobs:
